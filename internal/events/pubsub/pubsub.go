@@ -23,6 +23,18 @@ const (
 type LegacyPushSubscriptionEvent struct {
 	Subscription string `json:"subscription"`
 	Message      `json:"message"`
+
+	// DeliveryAttempt is the number of times a message has been delivered.
+	// This is part of the dead lettering feature that forwards messages that
+	// fail to be processed (from nack/ack deadline timeout) to a dead letter topic.
+	// If dead lettering is enabled, this will be set on all attempts, starting
+	// with value 1. Otherwise, the value will be nil.
+	// This field is read-only.
+	DeliveryAttempt *int
+
+	// OrderingKey identifies related messages for which publish order should
+	// be respected. If empty string is used, message will be sent unordered.
+	OrderingKey string
 }
 
 // Message represents a Pub/Sub message.
@@ -77,9 +89,11 @@ func (e *LegacyPushSubscriptionEvent) ToBackgroundEvent(topic string) *fftypes.B
 			},
 		},
 		Data: map[string]interface{}{
-			"@type":      pubsubMessageType,
-			"data":       e.Message.Data,
-			"attributes": e.Message.Attributes,
+			"@type":           pubsubMessageType,
+			"data":            e.Message.Data,
+			"attributes":      e.Message.Attributes,
+			"deliveryAttempt": e.DeliveryAttempt,
+			"orderingKey":     e.OrderingKey,
 		},
 	}
 }
